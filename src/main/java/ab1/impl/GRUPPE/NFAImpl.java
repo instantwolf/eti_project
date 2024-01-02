@@ -57,11 +57,6 @@ public class NFAImpl implements NFA {
     }
 
     @Override
-    public void finalizeAutomaton() {
-        this.isFinalized = true;
-    }
-
-    @Override
     public Set<String> getStates() {
         return this.states;
     }
@@ -85,7 +80,6 @@ public class NFAImpl implements NFA {
     public void addTransition(Transition transition) throws FinalizedStateException {
         throwExceptionIfFinalizedDeviates(false);
         checkValidTransition(transition);
-        //add states (if they arent part of the state-set)
         this.transitions.add(transition);
     }
 
@@ -94,6 +88,12 @@ public class NFAImpl implements NFA {
         throwExceptionIfFinalizedDeviates(false);
         this.acceptingStates.add(state);
     }
+
+    @Override
+    public void finalizeAutomaton() {
+        this.isFinalized = true;
+    }
+
 
     /** operations on NFAs */
     @Override
@@ -143,6 +143,8 @@ public class NFAImpl implements NFA {
     public boolean acceptsWord(String word) {
         return false;
     }
+
+
 
     /** Helper Methods */
     private void checkValidState(String state) throws IllegalArgumentException{
