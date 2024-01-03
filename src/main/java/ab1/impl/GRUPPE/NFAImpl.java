@@ -42,6 +42,7 @@ public class NFAImpl implements NFA {
         initMembers();
         setInitialState(startState);
     }
+
     private void initMembers(){
         states = new HashSet<>();
         transitions = new HashSet<>();
@@ -98,38 +99,38 @@ public class NFAImpl implements NFA {
     /** operations on NFAs */
     @Override
     public NFA union(NFA other) throws FinalizedStateException {
-        throwExceptionIfFinalizedDeviates(true);
-        return null;
+        throwExceptionIfFinalizedDeviates(other,true);
+        return NFAImplOperatorStrategy.union(this,other);
     }
 
     @Override
     public NFA intersection(NFA other) throws FinalizedStateException {
-        throwExceptionIfFinalizedDeviates(true);
-        return null;
+        throwExceptionIfFinalizedDeviates(other,true);
+        return NFAImplOperatorStrategy.concatenation(this,other);
     }
 
     @Override
     public NFA concatenation(NFA other) throws FinalizedStateException {
-        throwExceptionIfFinalizedDeviates(true);
-        return null;
+        throwExceptionIfFinalizedDeviates(other,true);
+        return NFAImplOperatorStrategy.concatenation(this,other);
     }
 
     @Override
     public NFA kleeneStar() throws FinalizedStateException {
         throwExceptionIfFinalizedDeviates(true);
-        return null;
+        return NFAImplOperatorStrategy.kleeneStar(this);
     }
 
     @Override
     public NFA plusOperator() throws FinalizedStateException {
         throwExceptionIfFinalizedDeviates(true);
-        return null;
+        return NFAImplOperatorStrategy.plusOperator(this);
     }
 
     @Override
     public NFA complement() throws FinalizedStateException {
         throwExceptionIfFinalizedDeviates(true);
-        return null;
+        return NFAImplOperatorStrategy.complement(this);
     }
 
 
@@ -159,17 +160,24 @@ public class NFAImpl implements NFA {
         this.initialState = state;
     }
 
-    private void addState(String state) throws IllegalArgumentException, FinalizedStateException{
-      //  throwExceptionIfFinalizedDeviates(false);
+    public void addState(String state) throws IllegalArgumentException, FinalizedStateException{
+        throwExceptionIfFinalizedDeviates(false);
         checkValidState(state);
         this.states.add(state);
     }
 
-    private void throwExceptionIfFinalizedDeviates(boolean requiredFinalizedState) throws FinalizedStateException{
+    public void throwExceptionIfFinalizedDeviates(boolean requiredFinalizedState) throws FinalizedStateException{
         if(this.isFinalized != requiredFinalizedState){
             throw new FinalizedStateException(); //not allowed when NFA is finalized
         }
     }
+    public void throwExceptionIfFinalizedDeviates(NFA other, boolean requiredFinalizedState) throws FinalizedStateException{
+        throwExceptionIfFinalizedDeviates(requiredFinalizedState);
+        if(other.isFinalized() != requiredFinalizedState){
+            throw new FinalizedStateException(); //not allowed when NFA is finalized
+        }
+    }
+
 
     private void checkValidTransition(Transition test){
         checkValidState(test.fromState());
