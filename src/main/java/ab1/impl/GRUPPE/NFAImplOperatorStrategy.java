@@ -26,8 +26,8 @@ public class NFAImplOperatorStrategy {
                 result.addTransition(new Transition(y,null,newEndState)));
 
         //mit eps - übergangen zu den beiden alten startzuständen
-        result.addTransition(new Transition(result.getInitialState(), null, nfa1.getInitialState()));
-        result.addTransition(new Transition(result.getInitialState(), null, nfa2.getInitialState()));
+        result.addTransition(new Transition(result.getInitialState(), null, p1+nfa1.getInitialState()));
+        result.addTransition(new Transition(result.getInitialState(), null, p2+nfa2.getInitialState()));
 
         result.finalizeAutomaton();
         return result;
@@ -68,6 +68,8 @@ public class NFAImplOperatorStrategy {
         //füge zusätzliche Epsilon-Transitionen ein
         String start = nfa.getInitialState();
         nfa.getAcceptingStates().forEach(x -> nfa1.addTransition(new Transition(x, null,start)));
+        //setze den StartZustand als EndZustand
+        nfa1.addAcceptingState(start);
 
         nfa1.finalizeAutomaton();
         return nfa1;
@@ -76,7 +78,7 @@ public class NFAImplOperatorStrategy {
     public static NFA plusOperator(NFA nfa) {
         NFA l = copyAutomaton(nfa,"");
 
-        NFA l2 = copyAutomaton(nfa,"prefix");
+        NFA l2 = copyAutomaton(nfa,"prefix-");
         l2.finalizeAutomaton();
 
         NFA lStar = kleeneStar(l2);

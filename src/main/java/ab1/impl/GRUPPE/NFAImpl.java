@@ -142,7 +142,8 @@ public class NFAImpl implements NFA {
 
     @Override
     public boolean acceptsWord(String word) {
-        return false;
+        return NFAImplAcceptsWordStrategy.acceptsWord(word,this);
+
     }
 
 
@@ -178,7 +179,6 @@ public class NFAImpl implements NFA {
         }
     }
 
-
     private void checkValidTransition(Transition test){
         checkValidState(test.fromState());
         checkValidState(test.toState());
@@ -189,5 +189,6 @@ public class NFAImpl implements NFA {
         addState(test.fromState());
         addState(test.toState());
     }
+
 
 }
