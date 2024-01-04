@@ -13,17 +13,21 @@ public class NFAImplAcceptsWordStrategy {
     public static boolean acceptsWord(String word, NFA nfa){
         //a word is in the language of an NFA if the automaton CAN result in a configuration that
         //has a final state and an empty word (no characters left to read)
+
         Collection<FAConfiguration> startSet ;
 
-        Collection<FAConfiguration> resultSet = new HashSet<>();
 
         Collection<FAConfiguration> workingSet = new HashSet<>();
         workingSet.add(new FAConfiguration(nfa.getInitialState(),word));
+
+        Collection<FAConfiguration> resultSet = new HashSet<>();
 
 
         Collection<Transition> transitions = nfa.getTransitions();
 
         //if this condition is true, word has been processed and no more transitional changes can be applied
+
+
         while(!workingSet.isEmpty()){
             startSet = new HashSet<>(workingSet);
             workingSet.clear();
