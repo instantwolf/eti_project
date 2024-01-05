@@ -132,5 +132,49 @@ public class LogicTests {
         assertFalse(instance.acceptsWord("ETI is fun!"));
     }
 
+    @Test
+    public void language5Test() {
+        var instance = factory.buildNFA("START");
+        instance.addTransition(
+                Transition.builder()
+                        .fromState("START")
+                        .readSymbol('a')
+                        .toState("ACCEPT")
+                        .build()
+        );
+        instance.addTransition(
+                Transition.builder()
+                        .fromState("START")
+                        .readSymbol(null)
+                        .toState("ACCEPT2")
+                        .build()
+        );
+        instance.addTransition(
+                Transition.builder()
+                        .fromState("ACCEPT2")
+                        .readSymbol(null)
+                        .toState("START")
+                        .build()
+        );
+        instance.addTransition(
+                Transition.builder()
+                        .fromState("ACCEPT")
+                        .readSymbol(null)
+                        .toState("START")
+                        .build()
+        );
+        instance.addAcceptingState("ACCEPT");
+        instance.addAcceptingState("ACCEPT2");
+        instance.finalizeAutomaton();
+
+        assertTrue(instance.acceptsWord("a"));
+        assertTrue(instance.acceptsWord("aa"));
+        assertTrue(instance.acceptsWord("aaa"));
+        assertTrue(instance.acceptsWord("aaaa"));
+        assertTrue(instance.acceptsWord("aaaaaaaaaaaaaaaaaaaaaa"));
+        assertFalse(instance.acceptsWord("ba"));
+        assertFalse(instance.acceptsWord("xyaz"));
+        assertFalse(instance.acceptsWord("ETI is fun!"));
+    }
 
 }

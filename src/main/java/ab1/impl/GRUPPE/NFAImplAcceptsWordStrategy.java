@@ -13,39 +13,38 @@ public class NFAImplAcceptsWordStrategy {
     public static boolean acceptsWord(String word, NFA nfa){
         //a word is in the language of an NFA if the automaton CAN result in a configuration that
         //has a final state and an empty word (no characters left to read)
-        Collection<FAConfiguration> startSet ;
-
+        Collection<FAConfiguration> predecessorSet ;
+        Collection<FAConfiguration> successorSet = new HashSet<>();
         Collection<FAConfiguration> resultSet = new HashSet<>();
-
-        Collection<FAConfiguration> workingSet = new HashSet<>();
-        workingSet.add(new FAConfiguration(nfa.getInitialState(),word));
-
 
         Collection<Transition> transitions = nfa.getTransitions();
 
-        //if this condition is true, word has been processed and no more transitional changes can be applied
-        while(!workingSet.isEmpty()){
-            startSet = new HashSet<>(workingSet);
-            workingSet.clear();
+        FAConfiguration initialconfig = new FAConfiguration(nfa.getInitialState(),word);
+        successorSet.add(initialconfig); //is going to be copied into predecessorSet
 
-            startSet.forEach(x -> workingSet.addAll(getSuccessors(x, transitions)));
 
+
+        //while we can find new configurations we proceed, once we cant , we are finished or stuck in a loop
+        while(successorSet.stream().anyMatch(x -> !resultSet.contains(x))){
             //now check all resulting configurations for the ones that have no word left to read
-            workingSet.stream().filter(x -> x.word() == null).forEach(resultSet::add);
+            resultSet.addAll(successorSet);
+
+            predecessorSet = new HashSet<>(successorSet);
+            successorSet.clear();
+
+            predecessorSet.forEach(x -> successorSet.addAll(getSuccessors(x, transitions)));
         }
 
         //now check if we have a final state within the configurations
         Collection<String> finalStates = nfa.getAcceptingStates();
-        return resultSet.stream().anyMatch(x -> finalStates.contains(x.currentState()));
+        return resultSet.stream().anyMatch(x -> x.word().isEmpty() && finalStates.contains(x.currentState()));
     }
+
+
 
 
     private static Collection<FAConfiguration> getSuccessors(FAConfiguration config, Collection<Transition> transitions){
             Set<FAConfiguration> res = new HashSet<>();
-
-            if(config.word().isEmpty()){
-                res.add(config);
-            }
 
             Character currentChar = getFirstCharacter(config.word());
             String remainingWord = getRemainingWord(config.word());
