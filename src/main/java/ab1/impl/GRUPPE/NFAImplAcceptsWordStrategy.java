@@ -16,22 +16,17 @@ public class NFAImplAcceptsWordStrategy {
         Collection<FAConfiguration> predecessorSet ;
         Collection<FAConfiguration> successorSet = new HashSet<>();
         Collection<FAConfiguration> resultSet = new HashSet<>();
-
         Collection<Transition> transitions = nfa.getTransitions();
 
         FAConfiguration initialconfig = new FAConfiguration(nfa.getInitialState(),word);
         successorSet.add(initialconfig); //is going to be copied into predecessorSet
 
-
-
         //while we can find new configurations we proceed, once we cant , we are finished or stuck in a loop
         while(successorSet.stream().anyMatch(x -> !resultSet.contains(x))){
             //now check all resulting configurations for the ones that have no word left to read
             resultSet.addAll(successorSet);
-
             predecessorSet = new HashSet<>(successorSet);
             successorSet.clear();
-
             predecessorSet.forEach(x -> successorSet.addAll(getSuccessors(x, transitions)));
         }
 
@@ -39,9 +34,6 @@ public class NFAImplAcceptsWordStrategy {
         Collection<String> finalStates = nfa.getAcceptingStates();
         return resultSet.stream().anyMatch(x -> x.word().isEmpty() && finalStates.contains(x.currentState()));
     }
-
-
-
 
     private static Collection<FAConfiguration> getSuccessors(FAConfiguration config, Collection<Transition> transitions){
             Set<FAConfiguration> res = new HashSet<>();
@@ -67,8 +59,6 @@ public class NFAImplAcceptsWordStrategy {
             return res;
     }
 
-
-
     private static String getRemainingWord(String word ){
         if(word != null && word.length() > 1){
             return word.substring(1);
@@ -82,5 +72,4 @@ public class NFAImplAcceptsWordStrategy {
         }
         return null;
     }
-
 }

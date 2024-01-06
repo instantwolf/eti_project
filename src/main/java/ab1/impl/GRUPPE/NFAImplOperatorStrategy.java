@@ -3,6 +3,8 @@ package ab1.impl.GRUPPE;
 import ab1.NFA;
 import ab1.Transition;
 
+import java.util.Collection;
+
 
 public class NFAImplOperatorStrategy {
 
@@ -90,21 +92,33 @@ public class NFAImplOperatorStrategy {
     }
 
     public static NFA complement(NFA nfa) {
-        return null;
+
         //determinisierung notwendig?
         //1.DFA via Potenzmengenkonstruktion
         //determinisierungsalgorithmus
-
+        NFA nfaTransformed = NFATransformator.transformEpsilonNFAtoNFA(nfa);
 
         //2.tausche end und nicht-endzustände
+        //erstelle neuen NFA
+        Collection<String> oldFinalStates = nfaTransformed.getAcceptingStates();
 
+        NFA newNFA = new NFAImpl(nfaTransformed.getInitialState());
+        copyStatesAndTransitions(nfaTransformed,newNFA,"",true);
+
+        nfaTransformed.getStates().stream()
+                .filter(x -> !oldFinalStates.contains(x))
+                .forEach(newNFA::addAcceptingState);
+
+
+        newNFA.finalizeAutomaton();
+        return newNFA;
         //FINALIZE NFA HERE BEFORE RETURNING
     }
 
 
 
     /** Helper methods */
-    private static NFA copyAutomaton(NFA from, String prefix){
+    public static NFA copyAutomaton(NFA from, String prefix){
         String p = (prefix == null? "" : prefix);
         NFA to = new NFAImpl(p+from.getInitialState());
 
@@ -112,7 +126,7 @@ public class NFAImplOperatorStrategy {
         return to;
     }
 
-    private static NFA copyStatesAndTransitions(NFA from, NFA to, String prefix, boolean skipAcceptingStates){
+    public static NFA copyStatesAndTransitions(NFA from, NFA to, String prefix, boolean skipAcceptingStates){
         String p = (prefix == null? "" : prefix);
 
         if(!skipAcceptingStates){

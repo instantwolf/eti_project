@@ -106,7 +106,7 @@ public class NFAImpl implements NFA {
     @Override
     public NFA intersection(NFA other) throws FinalizedStateException {
         throwExceptionIfFinalizedDeviates(other,true);
-        return NFAImplOperatorStrategy.concatenation(this,other);
+        return NFAImplOperatorStrategy.intersection(this,other);
     }
 
     @Override
