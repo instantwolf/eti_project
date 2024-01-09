@@ -3,13 +3,157 @@ package ab1.impl.GRUPPE;
 import ab1.NFA;
 import ab1.Transition;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.groupingBy;
+
 public class NFATransformator {
+
+
+    public static NFA nfaToDeterministicNFA(NFA eps){
+        NFA nfa = transformEpsilonNFAtoNFA(eps);
+        NFA detNFA = calculateDeterministicNFA(nfa);
+        return detNFA;
+    }
+
+
+    public static NFA calculateDeterministicNFA(NFA nfa){
+        Collection<Transition> transitions = nfa.getTransitions();
+        Collection<Collection<Collection<Transition>>> stateAndCharGroupedSuperSuperSet = getFromStateAndCharGroupedTransitions(transitions);
+       //We now have a 3 level set , where: on the first level within the set there is a set for each state, on the second level there is a set per Symbol
+        while(isNFANonDeterministic(stateAndCharGroupedSuperSuperSet)){
+            //1. Union of Transitions
+            Collection<Transition> sameStateAndCharGroupedTransitions = findNonDeterministicTransitions(stateAndCharGroupedSuperSuperSet);
+            //Introduce a new State that is UNION of states and substitute old transitions in the set
+            String superState =  getNewSuperStateFromTransitions(sameStateAndCharGroupedTransitions);
+            //remove the above transitions from the original set
+            transitions.removeAll(sameStateAndCharGroupedTransitions);
+            transitions.addAll(createNewTransisionsToSuperState(sameStateAndCharGroupedTransitions, superState));
+            //copy transitions from the merged states onto the superstate
+            transitions.addAll(copyTransitionsForMergedStates(transitions,superState));
+            //recalculate set based on transitions
+            stateAndCharGroupedSuperSuperSet = getFromStateAndCharGroupedTransitions(transitions);
+        }
+        //TODO: remove unreachable states
+
+        return createNFAFromTransitionSet(transitions, nfa.getInitialState(), nfa.getAcceptingStates());
+    }
+
+    private static NFA createNFAFromTransitionSet(Collection<Transition> transitions, String initialState, Collection<String> acceptingStates) {
+        NFA nfa = new NFAImpl(initialState);
+        transitions.forEach(nfa::addTransition);
+        Collection<String>  newAcceptingStates = calculateAcceptingStates(transitions, nfa.getAcceptingStates());
+        newAcceptingStates.forEach(nfa::addAcceptingState);
+        return nfa;
+    }
+
+    private static Collection<String> calculateAcceptingStates(Collection<Transition> transitions, Collection<String> oldAcceptingStates) {
+
+        Collection<String> states =  collectStatesFromTransitions(transitions,false);
+        Collection<String> newAcceptingStates = new HashSet<>();
+
+        for(String state : states){
+            if(isAcceptingState(state,oldAcceptingStates)) newAcceptingStates.add(state);
+        }
+        return newAcceptingStates;
+    }
+
+    private static boolean isAcceptingState(String state, Collection<String> acceptingStates) {
+      Collection<String> separatedStates = decomposeSuperState(state);
+      return separatedStates.stream().anyMatch(acceptingStates::contains);
+    }
+
+
+    private static Collection<Collection<Collection<Transition>>> getFromStateAndCharGroupedTransitions(Collection<Transition> transitions){
+        Collection<Collection<Transition>> sourceGroupedTransitions = groupTransitionSetBySourceState(transitions);
+        return sourceGroupedTransitions.stream().map(NFATransformator::groupTransitionSetByReadChar).collect(Collectors.toSet());
+
+    }
+
+    private static Collection<Transition> copyTransitionsForMergedStates(Collection<Transition> transitions, String superState) {
+        Collection<String> states = decomposeSuperState(superState);
+        Collection<Transition> copiedTransitions = new HashSet<>();
+        states.forEach(x -> findTransitionsforState(x,transitions).stream()
+                .map(y -> copyTransitionWithChangedSourceState(y,superState))
+                .forEach(copiedTransitions::add));
+        return copiedTransitions;
+    }
+
+    private static Transition copyTransitionWithChangedSourceState(Transition t, String superState){
+        return new Transition(superState, t.readSymbol(),t.toState());
+    }
+
+    private static Collection<Transition> findTransitionsforState(String fromState, Collection<Transition> transitions) {
+        return transitions.stream().filter(y -> y.fromState().equals(fromState)).collect(Collectors.toSet());
+    }
+
+
+    private static Collection<String> decomposeSuperState(String superState){
+        return Arrays.stream(superState.split("\\s*,\\s*")).toList();
+    }
+    private static Collection<Transition> createNewTransisionsToSuperState(Collection<Transition> sameStateAndCharGroupedTransitions, String superState) {
+        return sameStateAndCharGroupedTransitions.stream().map(x-> new Transition(x.fromState(),x.readSymbol(),superState)).collect(Collectors.toSet());
+    }
+
+
+    private static String getNewSuperStateFromTransitions(Collection<Transition> sameStateAndCharGroupedTransitions) {
+        return sameStateAndCharGroupedTransitions.stream().map(Transition::toState).collect(Collectors.joining(", "));
+    }
+
+
+    private static Collection<Transition> findNonDeterministicTransitions(Collection<Collection<Collection<Transition>>> transitionSuperSuperSet){
+       Optional<Collection<Collection<Transition>>> nonDetStateSuperSet =  transitionSuperSuperSet.stream().filter(x -> hasNonDeterministicSet(x)).findFirst();
+       if(nonDetStateSuperSet.isEmpty())
+           throw new RuntimeException();
+       Optional<Collection<Transition>> nonDetTransitions = nonDetStateSuperSet.get().stream().filter(x -> setHasMultipleTransitions(x)).findAny();
+        if(nonDetTransitions.isEmpty())
+            throw new RuntimeException();
+        return nonDetTransitions.get();
+    }
+
+
+    private static boolean setHasMultipleTransitions(Collection<Transition> set){
+        return set.size() > 1;
+    }
+    private static boolean hasNonDeterministicSet(Collection<Collection<Transition>> stateBasedTransitionSet) {
+        return stateBasedTransitionSet.stream().anyMatch(x->x.size()>1);
+    }
+
+    private static boolean isNFANonDeterministic(Collection<Collection<Collection<Transition>>> transitionSuperSuperSet){
+        return transitionSuperSuperSet.stream().anyMatch(x -> x.stream().anyMatch(y -> y.size() > 1));
+    }
+
+    private static Collection<Collection<Transition>> groupTransitionSetByReadChar
+            (Collection<Transition> stateBasedTransitionSet){
+        Collection<Collection<Transition>> transitionSuperset = new HashSet<>();
+        Collection<Character> readChars = collectReadSymbolFromTransitions(stateBasedTransitionSet);
+        readChars.forEach(x -> transitionSuperset.add(stateBasedTransitionSet.stream().filter(y -> y.readSymbol() == x).collect(Collectors.toSet())));
+        return transitionSuperset;
+    }
+
+    private static Collection<Character> collectReadSymbolFromTransitions(Collection<Transition> stateBasedTransitionSet) {
+        return stateBasedTransitionSet.stream().map(Transition::readSymbol).collect(Collectors.toSet());
+    }
+
+    private static Collection<Collection<Transition>> groupTransitionSetBySourceState(Collection<Transition> transitions) {
+        Collection<Collection<Transition>> transitionSuperset = new HashSet<>();
+        Collection<String> sourceStates = collectStatesFromTransitions(transitions, true);
+        sourceStates.forEach(x -> transitionSuperset.add(
+                transitions.stream().filter(y -> y.fromState().equals(x)).collect(Collectors.toSet())));
+
+        return transitionSuperset;
+    }
+
+    private static Collection<String> collectStatesFromTransitions(Collection<Transition> transitions, boolean skipDestinationStates) {
+        //add sourceStates
+        Collection<String> stateSet = transitions.stream().map(Transition::fromState).collect(Collectors.toSet());
+        //add destinationStates
+        if(!skipDestinationStates)
+            stateSet.addAll(transitions.stream().map(Transition::toState).collect(Collectors.toSet()));
+        return stateSet;
+    }
+
 
     public static NFA transformEpsilonNFAtoNFA(NFA nfa){
         Collection<Transition> transitionSet = nfa.getTransitions();
@@ -50,8 +194,6 @@ public class NFATransformator {
 
         return nfa1;
     }
-
-
 
     private static Collection<Transition> getEpsilonLoops(Collection<Transition> transitions){
         return transitions.stream()

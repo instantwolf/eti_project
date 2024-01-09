@@ -91,21 +91,21 @@ public class NFAImplOperatorStrategy {
         return concatenation(l, lStar);
     }
 
-    public static NFA complement(NFA nfa) {
+    public static NFA complement(NFA epsNFA) {
 
         //determinisierung notwendig?
         //1.DFA via Potenzmengenkonstruktion
         //determinisierungsalgorithmus
-        NFA nfaTransformed = NFATransformator.transformEpsilonNFAtoNFA(nfa);
-
+        NFA detFA = NFATransformator.nfaToDeterministicNFA(epsNFA);
+        //TODO: FEHLER BEI DEN ENDZUSTÄNDEN HIER (VERGESSEN?)
         //2.tausche end und nicht-endzustände
         //erstelle neuen NFA
-        Collection<String> oldFinalStates = nfaTransformed.getAcceptingStates();
+        Collection<String> oldFinalStates = detFA.getAcceptingStates();
 
-        NFA newNFA = new NFAImpl(nfaTransformed.getInitialState());
-        copyStatesAndTransitions(nfaTransformed,newNFA,"",true);
+        NFA newNFA = new NFAImpl(detFA.getInitialState());
+        copyStatesAndTransitions(detFA,newNFA,"",true);
 
-        nfaTransformed.getStates().stream()
+        detFA.getStates().stream()
                 .filter(x -> !oldFinalStates.contains(x))
                 .forEach(newNFA::addAcceptingState);
 
