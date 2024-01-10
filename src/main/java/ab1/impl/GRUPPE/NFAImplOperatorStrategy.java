@@ -37,11 +37,11 @@ public class NFAImplOperatorStrategy {
 
     public static NFA intersection(NFA nfa1, NFA nfa2) {
         //complement von der Vereinigung von complement-Automaten
-        NFA compNfa1 = complement(nfa1);
-        NFA compNfa2 = complement(nfa2);
+        NFA compNfa1 = complement(nfa1,true);
+        NFA compNfa2 = complement(nfa2,true);
 
         NFA unified = union(compNfa1,compNfa2);
-        return complement(unified);
+        return complement(unified,false);
     }
 
     public static NFA concatenation(NFA nfa1, NFA nfa2) {
@@ -91,15 +91,9 @@ public class NFAImplOperatorStrategy {
         return concatenation(l, lStar);
     }
 
-    public static NFA complement(NFA epsNFA) {
-
-        //determinisierung notwendig?
-        //1.DFA via Potenzmengenkonstruktion
-        //determinisierungsalgorithmus
-        NFA detFA = NFATransformator.nfaToDeterministicNFA(epsNFA);
-        //TODO: FEHLER BEI DEN ENDZUSTÄNDEN HIER (VERGESSEN?)
-        //2.tausche end und nicht-endzustände
-        //erstelle neuen NFA
+    public static NFA complement(NFA epsNFA, boolean skipTotalization) {
+        //everytime a FA is used for calculations , it needs to be de-determined
+        NFA detFA = NFATransformator.nfaToDeterministicNFA(epsNFA,skipTotalization);
         Collection<String> oldFinalStates = detFA.getAcceptingStates();
 
         NFA newNFA = new NFAImpl(detFA.getInitialState());

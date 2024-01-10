@@ -130,7 +130,7 @@ public class NFAImpl implements NFA {
     @Override
     public NFA complement() throws FinalizedStateException {
         throwExceptionIfFinalizedDeviates(true);
-        return NFAImplOperatorStrategy.complement(this);
+        return NFAImplOperatorStrategy.complement(this,false);
     }
 
 

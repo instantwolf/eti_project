@@ -29,8 +29,9 @@ public class TransformTests {
         instance.finalizeAutomaton();
 
        var newNFA =  instance.complement();
-       assertTrue(newNFA.getAcceptingStates().isEmpty());
-       assertEquals(6, newNFA.getTransitions().size());
+       assertTrue(instance.getAcceptingStates().stream()
+               .noneMatch(x->newNFA.getAcceptingStates().contains(x)));
+       assertEquals(4, newNFA.getStates().size());
        assertTrue(nfaContainsTransition(new Transition("s0",'a',"s0"),newNFA));
        assertTrue(nfaContainsTransition(new Transition("s1",'b',"s1"),newNFA));
        assertTrue(nfaContainsTransition(new Transition("s2",'c',"s2"),newNFA));

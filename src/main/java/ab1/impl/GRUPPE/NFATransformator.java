@@ -12,14 +12,14 @@ import static java.util.stream.Collectors.groupingBy;
 public class NFATransformator {
 
 
-    public static NFA nfaToDeterministicNFA(NFA eps){
+    public static NFA nfaToDeterministicNFA(NFA eps,boolean skipTotalization){
         NFA nfa = transformEpsilonNFAtoNFA(eps);
-        NFA detNFA = calculateDeterministicNFA(nfa);
+        NFA detNFA = calculateDeterministicNFA(nfa,skipTotalization);
         return detNFA;
     }
 
 
-    public static NFA calculateDeterministicNFA(NFA nfa){
+    public static NFA calculateDeterministicNFA(NFA nfa, boolean skipTotalization){
         Collection<Transition> transitions = nfa.getTransitions();
         Collection<Collection<Collection<Transition>>> stateAndCharGroupedSuperSuperSet = getFromStateAndCharGroupedTransitions(transitions);
        //We now have a 3 level set , where: on the first level within the set there is a set for each state, on the second level there is a set per Symbol
@@ -38,8 +38,10 @@ public class NFATransformator {
         }
         Collection<Transition> clearedTransitions = removeUnreachableStates(transitions, nfa.getInitialState());
         //add state and complete the "totalization" of transition function
-        Collection<Transition> missingTransitionsForTotality= addFangStateAndTransitions(clearedTransitions);
-        clearedTransitions.addAll(missingTransitionsForTotality);
+        if(!skipTotalization){
+            Collection<Transition> missingTransitionsForTotality= addFangStateAndTransitions(clearedTransitions);
+            clearedTransitions.addAll(missingTransitionsForTotality);
+        }
         Collection<String>  newAcceptingStates = calculateAcceptingStates(clearedTransitions,  nfa.getAcceptingStates());
         return createNFAFromTransitionSet(clearedTransitions, nfa.getInitialState(), newAcceptingStates);
     }
