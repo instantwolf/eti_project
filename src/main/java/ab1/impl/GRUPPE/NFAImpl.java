@@ -137,7 +137,7 @@ public class NFAImpl implements NFA {
     /** status methods */
     @Override
     public boolean isFinite() {
-        return false;
+        return NFAFiniteCheckerStrategy.isFinite(this);
     }
 
     @Override

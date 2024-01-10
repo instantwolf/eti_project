@@ -3,6 +3,7 @@ package ab1.impl.GRUPPE;
 import ab1.NFA;
 import ab1.Transition;
 
+import javax.xml.stream.events.Characters;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,16 +36,59 @@ public class NFATransformator {
             //recalculate set based on transitions
             stateAndCharGroupedSuperSuperSet = getFromStateAndCharGroupedTransitions(transitions);
         }
-        //TODO: remove unreachable states
+        Collection<Transition> clearedTransitions = removeUnreachableStates(transitions, nfa.getInitialState());
+        //add state and complete the "totalization" of transition function
+        Collection<Transition> missingTransitionsForTotality= addFangStateAndTransitions(clearedTransitions);
+        clearedTransitions.addAll(missingTransitionsForTotality);
+        Collection<String>  newAcceptingStates = calculateAcceptingStates(clearedTransitions,  nfa.getAcceptingStates());
+        return createNFAFromTransitionSet(clearedTransitions, nfa.getInitialState(), newAcceptingStates);
+    }
 
-        return createNFAFromTransitionSet(transitions, nfa.getInitialState(), nfa.getAcceptingStates());
+    private static Collection<Transition> addFangStateAndTransitions(Collection<Transition> transitions) {
+        Random random = new Random();
+        String fangState = "qFang-"+random.nextInt(1, 1024*1024)+"-"+random.nextInt(1, 1024*1024);
+        Collection<Character> charSet = transitions.stream().map(Transition::readSymbol).collect(Collectors.toSet());
+        Collection<Character> allChars = generateAllChars();
+        Collection<String> states = collectStatesFromTransitions(transitions,false);
+        Collection<Transition> missingTransitions =  states.stream().flatMap(x -> getCharacterTransitionsMissing(x, allChars, transitions, fangState).stream()).collect(Collectors.toSet());
+        allChars.forEach(x -> missingTransitions.add(new Transition(fangState,x,fangState)));
+        return missingTransitions;
+    }
+
+    public static Collection<Character> generateAllChars(){
+        char i = 0;
+        Collection<Character> allChars = new HashSet<>();
+
+        while (i <= 255){
+            allChars.add(Character.valueOf(i++));
+        }
+        return allChars;
+    }
+
+    private static Collection<Transition> getCharacterTransitionsMissing(String state,Collection<Character> charSet,Collection<Transition> transitions, String qFang){
+        Collection<Character> missingChars =   charSet.stream().filter(x -> transitions.stream().noneMatch(y -> y.fromState().equals(state) && y.readSymbol() == x)).collect(Collectors.toSet());
+        return missingChars.stream().map(x -> new Transition(state,x,qFang)).collect(Collectors.toSet());
+    }
+
+    private static Collection<Transition> removeUnreachableStates(Collection<Transition> transitions, String initialState){
+            Collection<String> states = collectStatesFromTransitions(transitions,false);
+            Collection<String> removeableStates;
+            do{
+                Collection<String> targetStates = transitions.stream().map(Transition::toState).collect(Collectors.toSet());
+                removeableStates = states.stream().filter(x -> targetStates.stream().noneMatch(y -> y.equals(x)) && !x.equals(initialState)).collect(Collectors.toSet());
+
+                removeableStates.forEach(x -> transitions
+                        .removeAll(transitions.stream().filter(y -> y.toState().equals(x) || y.fromState().equals(x))
+                                .collect(Collectors.toSet())));
+
+            }while(!removeableStates.isEmpty() && !transitions.isEmpty());
+            return transitions;
     }
 
     private static NFA createNFAFromTransitionSet(Collection<Transition> transitions, String initialState, Collection<String> acceptingStates) {
         NFA nfa = new NFAImpl(initialState);
         transitions.forEach(nfa::addTransition);
-        Collection<String>  newAcceptingStates = calculateAcceptingStates(transitions, nfa.getAcceptingStates());
-        newAcceptingStates.forEach(nfa::addAcceptingState);
+        acceptingStates.forEach(nfa::addAcceptingState);
         return nfa;
     }
 
@@ -68,7 +112,6 @@ public class NFATransformator {
     private static Collection<Collection<Collection<Transition>>> getFromStateAndCharGroupedTransitions(Collection<Transition> transitions){
         Collection<Collection<Transition>> sourceGroupedTransitions = groupTransitionSetBySourceState(transitions);
         return sourceGroupedTransitions.stream().map(NFATransformator::groupTransitionSetByReadChar).collect(Collectors.toSet());
-
     }
 
     private static Collection<Transition> copyTransitionsForMergedStates(Collection<Transition> transitions, String superState) {
