@@ -1,4 +1,4 @@
-package ab1.impl.GRUPPE;
+package ab1.impl.gruppe_29_prett_fischer_szolderits;
 
 import ab1.NFA;
 import ab1.NFAFactory;

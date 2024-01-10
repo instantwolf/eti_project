@@ -1,21 +1,18 @@
-package ab1.impl.GRUPPE;
+package ab1.impl.gruppe_29_prett_fischer_szolderits;
 
 import ab1.NFA;
 import ab1.Transition;
 
-import javax.xml.stream.events.Characters;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.groupingBy;
 
 public class NFATransformator {
 
 
     public static NFA nfaToDeterministicNFA(NFA eps,boolean skipTotalization){
         NFA nfa = transformEpsilonNFAtoNFA(eps);
-        NFA detNFA = calculateDeterministicNFA(nfa,skipTotalization);
-        return detNFA;
+        return calculateDeterministicNFA(nfa,skipTotalization);
     }
 
 
@@ -30,7 +27,7 @@ public class NFATransformator {
             String superState =  getNewSuperStateFromTransitions(sameStateAndCharGroupedTransitions);
             //remove the above transitions from the original set
             transitions.removeAll(sameStateAndCharGroupedTransitions);
-            transitions.addAll(createNewTransisionsToSuperState(sameStateAndCharGroupedTransitions, superState));
+            transitions.addAll(createNewTransitionsToSuperState(sameStateAndCharGroupedTransitions, superState));
             //copy transitions from the merged states onto the superstate
             transitions.addAll(copyTransitionsForMergedStates(transitions,superState));
             //recalculate set based on transitions
@@ -42,6 +39,7 @@ public class NFATransformator {
             Collection<Transition> missingTransitionsForTotality= addFangStateAndTransitions(clearedTransitions);
             clearedTransitions.addAll(missingTransitionsForTotality);
         }
+        //get the new acceptingStates (maybe some accepting states were not reachable (anymore))
         Collection<String>  newAcceptingStates = calculateAcceptingStates(clearedTransitions,  nfa.getAcceptingStates());
         return createNFAFromTransitionSet(clearedTransitions, nfa.getInitialState(), newAcceptingStates);
     }
@@ -49,7 +47,6 @@ public class NFATransformator {
     private static Collection<Transition> addFangStateAndTransitions(Collection<Transition> transitions) {
         Random random = new Random();
         String fangState = "qFang-"+random.nextInt(1, 1024*1024)+"-"+random.nextInt(1, 1024*1024);
-        Collection<Character> charSet = transitions.stream().map(Transition::readSymbol).collect(Collectors.toSet());
         Collection<Character> allChars = generateAllChars();
         Collection<String> states = collectStatesFromTransitions(transitions,false);
         Collection<Transition> missingTransitions =  states.stream().flatMap(x -> getCharacterTransitionsMissing(x, allChars, transitions, fangState).stream()).collect(Collectors.toSet());
@@ -73,17 +70,18 @@ public class NFATransformator {
     }
 
     private static Collection<Transition> removeUnreachableStates(Collection<Transition> transitions, String initialState){
-            Collection<String> states = collectStatesFromTransitions(transitions,false);
-            Collection<String> removeableStates;
+            Collection<String> states;
+            Collection<String> removableStates;
             do{
+                states = collectStatesFromTransitions(transitions,false);
                 Collection<String> targetStates = transitions.stream().map(Transition::toState).collect(Collectors.toSet());
-                removeableStates = states.stream().filter(x -> targetStates.stream().noneMatch(y -> y.equals(x)) && !x.equals(initialState)).collect(Collectors.toSet());
+                removableStates = states.stream().filter(x -> targetStates.stream().noneMatch(y -> y.equals(x)) && !x.equals(initialState)).collect(Collectors.toSet());
 
-                removeableStates.forEach(x -> transitions
+                removableStates.forEach(x -> transitions
                         .removeAll(transitions.stream().filter(y -> y.toState().equals(x) || y.fromState().equals(x))
                                 .collect(Collectors.toSet())));
 
-            }while(!removeableStates.isEmpty() && !transitions.isEmpty());
+            }while(!removableStates.isEmpty() && !transitions.isEmpty());
             return transitions;
     }
 
@@ -119,7 +117,7 @@ public class NFATransformator {
     private static Collection<Transition> copyTransitionsForMergedStates(Collection<Transition> transitions, String superState) {
         Collection<String> states = decomposeSuperState(superState);
         Collection<Transition> copiedTransitions = new HashSet<>();
-        states.forEach(x -> findTransitionsforState(x,transitions).stream()
+        states.forEach(x -> findTransitionsForState(x,transitions).stream()
                 .map(y -> copyTransitionWithChangedSourceState(y,superState))
                 .forEach(copiedTransitions::add));
         return copiedTransitions;
@@ -129,7 +127,7 @@ public class NFATransformator {
         return new Transition(superState, t.readSymbol(),t.toState());
     }
 
-    private static Collection<Transition> findTransitionsforState(String fromState, Collection<Transition> transitions) {
+    private static Collection<Transition> findTransitionsForState(String fromState, Collection<Transition> transitions) {
         return transitions.stream().filter(y -> y.fromState().equals(fromState)).collect(Collectors.toSet());
     }
 
@@ -137,7 +135,7 @@ public class NFATransformator {
     private static Collection<String> decomposeSuperState(String superState){
         return Arrays.stream(superState.split("\\s*,\\s*")).toList();
     }
-    private static Collection<Transition> createNewTransisionsToSuperState(Collection<Transition> sameStateAndCharGroupedTransitions, String superState) {
+    private static Collection<Transition> createNewTransitionsToSuperState(Collection<Transition> sameStateAndCharGroupedTransitions, String superState) {
         return sameStateAndCharGroupedTransitions.stream().map(x-> new Transition(x.fromState(),x.readSymbol(),superState)).collect(Collectors.toSet());
     }
 
@@ -148,10 +146,10 @@ public class NFATransformator {
 
 
     private static Collection<Transition> findNonDeterministicTransitions(Collection<Collection<Collection<Transition>>> transitionSuperSuperSet){
-       Optional<Collection<Collection<Transition>>> nonDetStateSuperSet =  transitionSuperSuperSet.stream().filter(x -> hasNonDeterministicSet(x)).findFirst();
+       Optional<Collection<Collection<Transition>>> nonDetStateSuperSet =  transitionSuperSuperSet.stream().filter(NFATransformator::hasNonDeterministicSet).findFirst();
        if(nonDetStateSuperSet.isEmpty())
            throw new RuntimeException();
-       Optional<Collection<Transition>> nonDetTransitions = nonDetStateSuperSet.get().stream().filter(x -> setHasMultipleTransitions(x)).findAny();
+       Optional<Collection<Transition>> nonDetTransitions = nonDetStateSuperSet.get().stream().filter(NFATransformator::setHasMultipleTransitions).findAny();
         if(nonDetTransitions.isEmpty())
             throw new RuntimeException();
         return nonDetTransitions.get();
@@ -204,14 +202,6 @@ public class NFATransformator {
         Collection<Transition> transitionSet = nfa.getTransitions();
         Collection<String> acceptingStates = nfa.getAcceptingStates();
 
-        //um epsilon verbindungen zu elimieren:
-        // iteriere über alle transitionen.
-        //lösche Epsilonschleifen der länge 0 (reflex. transitionen)
-        // für jede Epislonkante:
-        // 1. Alle eingehenden Kanten des Ursprungszustandes der eps-Kante werden an den Zielzustand der epsilon-kante-kopiert.
-        // 2. Alle ausgehenden Kanten des Zielzustandes der eps-Kante werden an den Ursprungszustand der epsilon-kante-kopiert.
-        // Nach dem Ausführen der zwei Schritte kann die Kante gelöscht werden
-
         while(transitionSet.stream().anyMatch(x -> x.readSymbol() == null)){
 
             transitionSet.removeAll(getEpsilonLoops(transitionSet));
@@ -226,7 +216,7 @@ public class NFATransformator {
 
            transitionSet.addAll(bridgeInboundTransitions(eps,transitionSet));
            transitionSet.addAll(bridgeOutBoundTransitions(eps, transitionSet));
-           //when target of eps transition is acceptingState , so is source
+           //when target of eps transition is acceptingState , so is sourced
             if(acceptingStates.contains(eps.toState())){
                 acceptingStates.add(eps.fromState());
             }

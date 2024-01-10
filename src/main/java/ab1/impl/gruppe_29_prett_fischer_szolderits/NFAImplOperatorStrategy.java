@@ -1,4 +1,4 @@
-package ab1.impl.GRUPPE;
+package ab1.impl.gruppe_29_prett_fischer_szolderits;
 
 import ab1.NFA;
 import ab1.Transition;
@@ -16,16 +16,11 @@ public class NFAImplOperatorStrategy {
         NFA result = new NFAImpl("START");
 
         //copy prefixed states and transitions without final states
-        copyStatesAndTransitions(nfa1,result,p1,true);
-        copyStatesAndTransitions(nfa2,result,p2,true);
+         copyStatesAndTransitions(nfa1,result,p1,true);
+         copyStatesAndTransitions(nfa2,result,p2,true);
 
-        // insert new final state and create epsilon transitions from all the old final states
-        String newEndState = "ACCEPT";
-        result.addAcceptingState(newEndState);
-        nfa1.getAcceptingStates().stream().map(x-> p1+x).forEach(y ->
-                result.addTransition(new Transition(y,null,newEndState)));
-        nfa2.getAcceptingStates().stream().map(x-> p2+x).forEach(y ->
-                result.addTransition(new Transition(y,null,newEndState)));
+        nfa1.getAcceptingStates().stream().map(x-> p1+x).forEach(result::addAcceptingState);
+        nfa2.getAcceptingStates().stream().map(x-> p2+x).forEach(result::addAcceptingState);
 
         //mit eps - übergangen zu den beiden alten startzuständen
         result.addTransition(new Transition(result.getInitialState(), null, p1+nfa1.getInitialState()));
@@ -50,7 +45,7 @@ public class NFAImplOperatorStrategy {
        String prefixedStart = prefix+nfa2.getInitialState();
 
         NFA res = new NFAImpl(nfa1.getInitialState());
-        //cannot copy acceptingstates
+        //cannot copy accepting-states
         copyStatesAndTransitions(nfa1, res,"",true);
         //add eps transitions to second start state
         nfa1.getAcceptingStates().forEach(x -> res.addTransition(
@@ -110,7 +105,6 @@ public class NFAImplOperatorStrategy {
     }
 
 
-
     /** Helper methods */
     public static NFA copyAutomaton(NFA from, String prefix){
         String p = (prefix == null? "" : prefix);
@@ -120,7 +114,7 @@ public class NFAImplOperatorStrategy {
         return to;
     }
 
-    public static NFA copyStatesAndTransitions(NFA from, NFA to, String prefix, boolean skipAcceptingStates){
+    public static void copyStatesAndTransitions(NFA from, NFA to, String prefix, boolean skipAcceptingStates){
         String p = (prefix == null? "" : prefix);
 
         if(!skipAcceptingStates){
@@ -132,7 +126,6 @@ public class NFAImplOperatorStrategy {
         from.getTransitions().forEach(x -> to.addTransition(
                 new Transition(p+x.fromState(),x.readSymbol(), p+x.toState())));
 
-        return to;
     }
 
 

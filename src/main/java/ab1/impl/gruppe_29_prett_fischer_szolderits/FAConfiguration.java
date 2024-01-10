@@ -1,7 +1,6 @@
-package ab1.impl.GRUPPE;
+package ab1.impl.gruppe_29_prett_fischer_szolderits;
 
 import lombok.Builder;
-import ab1.NFA;
 
 /**
  * Describes a transition of one character
